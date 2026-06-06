@@ -77,31 +77,58 @@ interface Props {
   center: [number, number];
   zoom?: number;
   showHeatmap?: boolean;
+  tileLayer?: "light" | "terrain" | "transit";
   onFlowerClick?: (flower: FlowerData) => void;
 }
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, onFlowerClick }: Props) {
+const TILES: Record<string, { url: string; attribution: string }> = {
+  light: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
+  },
+  terrain: {
+    url: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> | <a href="https://osm.org">OSM</a>',
+  },
+  transit: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
+  },
+};
+
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
   const heatRef = useRef<L.Layer | null>(null);
+  const tileRef = useRef<L.TileLayer | null>(null);
 
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    if (typeof window === "undefined") return; // extra safety
+    if (typeof window === "undefined") return;
 
     fixLeafletIcons();
     const map = L.map(containerRef.current).setView(center, zoom);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
+    const t = TILES[tileLayer];
+    tileRef.current = L.tileLayer(t.url, {
+      attribution: t.attribution,
       subdomains: "abcd",
       maxZoom: 19,
     }).addTo(map);
 
+    // Add transit overlay when transit mode
+    if (tileLayer === "transit") {
+      L.tileLayer("https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://memomaps.de/">MeMoMaps</a>',
+        maxZoom: 18,
+        opacity: 0.5,
+      }).addTo(map);
+    }
+
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { map.remove(); mapRef.current = null; tileRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

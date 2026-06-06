@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchFlowersWithCoords } from "@/lib/gbif";
-import { enrichSpeciesBatch } from "@/lib/wikidata";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -28,31 +27,6 @@ export async function GET(request: NextRequest) {
     month,
   });
 
-  // Enrich with Wikidata (species info, photos, Wikipedia links)
-  // Wikidata is optional — failures are logged but never block the response
-  if (result.flowers.length > 0) {
-    try {
-      const speciesNames = [
-        ...new Set(result.flowers.map((f) => f.species)),
-      ];
-      const enriched = await enrichSpeciesBatch(speciesNames);
-
-      for (const flower of result.flowers) {
-        const info = enriched.get(flower.species);
-        if (info) {
-          flower.commonName = info.commonName || flower.commonName;
-          flower.wikiUrl = info.wikiUrl || flower.wikiUrl;
-          flower.description = info.description || flower.description;
-          if (!flower.photoUrl && info.imageUrl) {
-            flower.photoUrl = info.imageUrl;
-            flower.photoAttribution = info.imageAttribution;
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Wikidata enrichment failed (non-fatal):", err);
-    }
-  }
-
+  // Fast: return GBIF data immediately. Wikidata enrichment is on-demand via /api/species-info
   return NextResponse.json(result);
 }
