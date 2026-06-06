@@ -44,8 +44,8 @@ export default function FlowerDetails({ flower, onClose }: Props) {
   }, [flower.species]);
 
   const badge = SOURCE_BADGE[flower.source] || SOURCE_BADGE.gbif;
-  // Primary photo: original observation photo first, never replace with enrichment
-  const displayImage = flower.photoUrl;
+  // Primary photo: Wikipedia thumbnail (stable, curated)
+  const displayImage = enrichment?.thumbnail || flower.photoUrl;
   const displayDesc = enrichment?.wikiSummary || flower.description;
   const displayWiki = enrichment?.wikiUrl || flower.wikiUrl;
   const displayFamily = enrichment?.family || flower.family;
