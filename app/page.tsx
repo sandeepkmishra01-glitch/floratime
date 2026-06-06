@@ -35,7 +35,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState<number | undefined>(undefined);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [search, setSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
@@ -122,20 +121,9 @@ export default function Home() {
   }, [locationSearch]);
 
   const filtered = useMemo(() => {
-    let result = flowers;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(f =>
-        f.species.toLowerCase().includes(q) ||
-        (f.commonName && f.commonName.toLowerCase().includes(q)) ||
-        (f.placeGuess && f.placeGuess.toLowerCase().includes(q))
-      );
-    }
-    if (selectedSpecies.size > 0) {
-      result = result.filter(f => selectedSpecies.has(f.species));
-    }
-    return result;
-  }, [flowers, search, selectedSpecies]);
+    if (selectedSpecies.size === 0) return flowers;
+    return flowers.filter(f => selectedSpecies.has(f.species));
+  }, [flowers, selectedSpecies]);
 
   const uniqueSpecies = useMemo(() => {
     const map = new Map<string, { name: string; common: string | null; photo: string | null }>();
@@ -199,18 +187,6 @@ export default function Home() {
                 ))}
               </DropdownPortal>
             </div>
-
-            {/* TEST: direct click — remove after debug */}
-            <button onClick={() => {
-              if (flowers.length > 0) {
-                console.log("[FloraTime] TEST button — setting flower:", flowers[0].species);
-                setSelectedFlower(flowers[0]);
-              }
-            }}
-              className="flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded
-                         bg-red-600 text-white hover:bg-red-700 transition whitespace-nowrap">
-              TEST
-            </button>
 
             {/* Add observation */}
             <button onClick={() => setShowAddForm(true)}
@@ -293,12 +269,6 @@ export default function Home() {
         {/* ── Detail Panel ── */}
         {selectedFlower && (
           <FlowerDetails flower={selectedFlower} onClose={handleClose} />
-        )}
-        {/* DEBUG: shows when selectedFlower is set */}
-        {selectedFlower && (
-          <div className="fixed top-16 right-4 z-[9999] bg-red-500 text-white px-3 py-1 text-xs rounded-full font-mono shadow-lg">
-            SELECTED: {selectedFlower.species}
-          </div>
         )}
 
         {/* Add observation form */}

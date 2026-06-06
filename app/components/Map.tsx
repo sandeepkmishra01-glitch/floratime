@@ -98,6 +98,13 @@ export default function FlowerMap({ flowers, center, zoom = 12, onFlowerClick, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fly to new center when user searches a location
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setView(center, map.getZoom(), { animate: true });
+  }, [center]);
+
   // Update flower markers
   useEffect(() => {
     const map = mapRef.current;

@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FloraTime 🌸
 
-## Getting Started
+Explore flowering plants across the USA — powered by GBIF, styled like OregonFlora.
 
-First, run the development server:
+**floratime.railway.app** (or your Railway URL)
+
+## What it does
+
+- Interactive Leaflet map showing flowering plant observations from GBIF
+- Search any US city → map flies there
+- Filter by month (e.g. April blooms)
+- Sidebar species checklist — check/uncheck to filter map
+- Click a flower marker or species name → detail panel with photo, date, location
+- Community observations (localStorage, no account needed)
+
+## Stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 15 (App Router) |
+| Map | Leaflet + CARTO light tiles |
+| Flower data | GBIF Occurrence API (free, no key) |
+| Geocoding | OpenStreetMap Nominatim |
+| Deployment | Railway (auto-build from GitHub) |
+
+All APIs are free and key-less.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build for production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+floratime/
+├── app/
+│   ├── page.tsx              ← Main page (header, map, sidebar)
+│   ├── layout.tsx
+│   ├── globals.css
+│   ├── api/
+│   │   ├── flowers/          ← GBIF proxy (/api/flowers?lat=&lng=&month=)
+│   │   ├── species-info/     ← Wikidata enrichment (optional)
+│   │   └── area-info/        ← Overpass park info (optional)
+│   └── components/
+│       ├── Map.tsx            ← Leaflet map + markers
+│       ├── FlowerDetails.tsx  ← Detail panel (click a flower)
+│       ├── SpeciesSidebar.tsx ← Species checklist sidebar
+│       ├── AddObservation.tsx ← Community submission form
+│       ├── DropdownPortal.tsx ← Portal-based dropdown
+│       ├── Portal.tsx
+│       └── ErrorBoundary.tsx
+├── lib/
+│   └── gbif.ts               ← GBIF API client
+├── types/
+│   ├── index.ts              ← FlowerData type
+│   └── submissions.ts        ← UserSubmission type
+└── public/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## APIs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### GBIF (flowers)
+`/api/flowers?lat=38.9&lng=-77.0&radius=30&month=4&per_page=100`
 
-## Deploy on Vercel
+Returns observations around a point, month-filtered. No API key needed.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Nominatim (geocoding)
+Client-side fetch to `nominatim.openstreetmap.org` with `User-Agent: FloraTime/1.0`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Design
+
+Palette inspired by OregonFlora:
+- Forest `#1e352f` — headers, text
+- Fern `#5fb021` — accents, buttons
+- Sage `#d4e4d0` — backgrounds
+- Cream `#fefdf8` — page background
+
+Font: Source Sans Pro (Google Fonts)
+
+## License
+
+MIT
