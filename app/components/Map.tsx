@@ -115,26 +115,23 @@ export default function FlowerMap({ flowers, center, zoom = 12, onFlowerClick, o
 
     flowers.forEach(f => {
       if (!f.lat || !f.lng) return;
-      const photo = f.photoUrl
-        ? `<img src="${esc(f.photoUrl)}" alt="${esc(f.species)}"
-              style="width:100%;height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px;"
-              onerror="this.style.display='none'" />`
-        : "";
       const date = fmtDate(f.observedOn);
 
       const marker = L.marker([f.lat, f.lng], { icon: getFlowerIcon() })
         .addTo(map)
-        .bindPopup(
-          `<div style="min-width:160px;max-width:240px;font-family:'Source Sans Pro',sans-serif;">
-            ${photo}
+        .bindTooltip(
+          `<div style="font-family:'Source Sans Pro',sans-serif;text-align:center;">
             <strong style="color:#1e352f;">${esc(f.species)}</strong>
             ${f.commonName ? `<br/><em style="color:#5fb021;">${esc(f.commonName)}</em>` : ""}
-            ${date ? `<br/><span style="font-size:12px;">📅 ${date}</span>` : ""}
+            ${date ? `<br/><span style="font-size:11px;color:#666;">📅 ${date}</span>` : ""}
           </div>`,
-          { maxWidth: 260 }
+          { direction: "top", offset: [0, -30], opacity: 0.95 }
         );
 
-      marker.on("click", () => onFlowerClick?.(f));
+      marker.on("click", () => {
+        marker.closeTooltip();
+        onFlowerClick?.(f);
+      });
       markersRef.current.set(f.id, marker);
     });
   }, [flowers, onFlowerClick]);
