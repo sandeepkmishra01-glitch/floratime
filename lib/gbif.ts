@@ -30,6 +30,15 @@ function bboxFromPoint(
   return `POLYGON((${minLng} ${minLat},${maxLng} ${minLat},${maxLng} ${maxLat},${minLng} ${maxLat},${minLng} ${minLat}))`;
 }
 
+function safeAttribution(refs: string | undefined): string | null {
+  if (!refs) return null;
+  try {
+    return `© GBIF via ${new URL(refs).hostname}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchFlowers(
   params: FlowerSearchParams
 ): Promise<FlowerData[]> {
@@ -97,9 +106,7 @@ function mapOccurrence(occ: GBIFOccurrence): FlowerData {
     commonName: null, // Filled by Wikidata enrichment
     observedOn: occ.eventDate || null,
     photoUrl: media?.identifier || null,
-    photoAttribution: media?.references
-      ? `© GBIF via ${new URL(media.references).hostname}`
-      : null,
+    photoAttribution: safeAttribution(media?.references),
     wikiUrl: null, // Filled by Wikidata enrichment
     description: null,
     observerName: null,

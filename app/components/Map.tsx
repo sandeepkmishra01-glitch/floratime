@@ -38,6 +38,53 @@ interface Props {
   onFlowerClick?: (flower: FlowerData) => void;
 }
 
+/** Escape HTML to prevent injection in popup strings */
+function esc(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatDate(d: string | null): string {
+  if (!d) return "";
+  try {
+    // GBIF can return date ranges like "2024-06/2024-07" — take the start
+    const clean = d.split("/")[0].trim();
+    const date = new Date(clean);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function buildPopup(f: FlowerData): string {
+  const photo = f.photoUrl
+    ? `<img src="${esc(f.photoUrl)}" alt="${esc(f.species)}"
+          style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;"
+          onerror="this.style.display='none'" />`
+    : "";
+
+  const date = formatDate(f.observedOn);
+  const place = f.placeGuess ? `<br/>📍 ${esc(f.placeGuess)}` : "";
+
+  return `<div style="min-width:180px;max-width:260px;">
+    ${photo}
+    <strong>${esc(f.species)}</strong>
+    ${f.commonName ? `<br/><em>${esc(f.commonName)}</em>` : ""}
+    ${date ? `<br/>📅 ${date}` : ""}
+    ${place}
+  </div>`;
+}
+
 export default function FlowerMap({
   flowers,
   center,
@@ -54,7 +101,6 @@ export default function FlowerMap({
 
     const map = L.map(containerRef.current).setView(center, zoom);
 
-    // OpenFreeMap tiles: free, no API key, zero tracking
     L.tileLayer("https://tiles.openfreemap.org/liberty/{z}/{x}/{y}.png", {
       attribution:
         '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> | <a href="https://openstreetmap.org">OSM</a>',
@@ -67,7 +113,6 @@ export default function FlowerMap({
       map.remove();
       mapRef.current = null;
     };
-    // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -76,35 +121,15 @@ export default function FlowerMap({
     const map = mapRef.current;
     if (!map) return;
 
-    // Remove old markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current.clear();
 
-    // Add new markers
     flowers.forEach((flower) => {
       if (!flower.lat || !flower.lng) return;
 
       const marker = L.marker([flower.lat, flower.lng], { icon: FLOWER_ICON })
         .addTo(map)
-        .bindPopup(
-          `<div style="min-width: 180px;">
-            ${
-              flower.photoUrl
-                ? `<img src="${flower.photoUrl}" alt="${flower.species}" 
-                    style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;" />`
-                : ""
-            }
-            <strong>${flower.species}</strong>
-            ${flower.commonName ? `<br/><em>${flower.commonName}</em>` : ""}
-            ${
-              flower.observedOn
-                ? `<br/>📅 ${new Date(flower.observedOn).toLocaleDateString()}`
-                : ""
-            }
-            ${flower.placeGuess ? `<br/>📍 ${flower.placeGuess}` : ""}
-          </div>`,
-          { maxWidth: 260 }
-        );
+        .bindPopup(buildPopup(flower), { maxWidth: 280 });
 
       marker.on("click", () => {
         onFlowerClick?.(flower);

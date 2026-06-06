@@ -7,6 +7,22 @@ interface Props {
   onClose: () => void;
 }
 
+/** Safely format a GBIF date (handles ranges like "2024-06/2024-07") */
+function safeDate(d: string): string {
+  try {
+    const clean = d.split("/")[0].trim();
+    const date = new Date(clean);
+    if (isNaN(date.getTime())) return d;
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return d;
+  }
+}
+
 export default function FlowerDetails({ flower, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -93,11 +109,7 @@ export default function FlowerDetails({ flower, onClose }: Props) {
                   Observed
                 </span>
                 <span className="text-forest font-medium">
-                  {new Date(flower.observedOn).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {safeDate(flower.observedOn)}
                 </span>
               </div>
             )}
