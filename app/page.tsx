@@ -42,6 +42,7 @@ export default function Home() {
   const [selectedSpecies, setSelectedSpecies] = useState<Set<string>>(new Set());
   const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
   const monthBtnRef = useRef<HTMLButtonElement>(null);
   const locationInputRef = useRef<HTMLDivElement>(null);
   const locationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -58,11 +59,12 @@ export default function Home() {
         per_page: "100",
       });
       if (m) params.set("month", m.toString());
-      const res = await fetch(`/api/flowers?${params.toString()}`);
+      const res = await fetch(`/api/flowers/combined?${params.toString()}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       setFlowers(data.flowers || []);
       setTotal(data.total || 0);
+      setSourceCounts(data.sourceCounts || {});
       setSelectedSpecies(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
@@ -218,6 +220,11 @@ export default function Home() {
             </div>
 
             <span className="text-white/40 text-[10px] whitespace-nowrap flex-shrink-0">{loading ? "..." : `${total}`}</span>
+            {!loading && sourceCounts.gbif != null && (
+              <span className="text-white/30 text-[9px] whitespace-nowrap flex-shrink-0 ml-1 leading-none border-l border-white/20 pl-2">
+                GBIF:{sourceCounts.gbif} INat:{sourceCounts.inaturalist}
+              </span>
+            )}
           </div>
         </header>
 

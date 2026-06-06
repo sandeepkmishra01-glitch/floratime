@@ -4,6 +4,8 @@ export interface PhotoItem {
   attribution: string | null;
 }
 
+export type FlowerSource = "gbif" | "inaturalist" | "user";
+
 export interface FlowerData {
   id: string;
   lat: number;
@@ -29,6 +31,16 @@ export interface FlowerData {
   conservationStatus?: string | null;
   invasive?: boolean | null;
   toxic?: string | null;
+  source: FlowerSource;               // which API provided this
+  // iNaturalist-specific
+  qualityGrade?: "research" | "needs_id" | "casual" | null;
+  captive?: boolean | null;
+  // Enrichment — populated lazily
+  nativeStatus?: string | null;
+  family?: string | null;
+  genus?: string | null;
+  thumbnail?: string | null;
+  wikiSummary?: string | null;
 }
 
 export interface FlowerSearchParams {
@@ -92,4 +104,20 @@ export interface WikiSpeciesInfo {
   invasive: boolean | null;
   toxic: string | null;
   additionalImages: string[] | null;
+}
+
+// Combined enrichment result
+export interface SpeciesEnrichment {
+  speciesName: string;
+  // Wikipedia
+  wikiSummary: string | null;
+  wikiUrl: string | null;
+  thumbnail: string | null;
+  // GBIF species
+  family: string | null;
+  genus: string | null;
+  taxonomicStatus: string | null;
+  // Wikidata
+  commonName: string | null;
+  conservationStatus: string | null;
 }

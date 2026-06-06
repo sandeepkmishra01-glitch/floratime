@@ -123,6 +123,7 @@ function mapOccurrence(occ: GBIFOccurrence): FlowerData {
     placeGuess: occ.locality || null,
     sourceUrl: occ.references || `https://www.gbif.org/occurrence/${occ.key}`,
     datasetName: occ.datasetName || null,
+    source: "gbif",
     taxonRank: occ.taxonRank || null,
     recordedBy: occ.recordedBy || null,
     individualCount: occ.individualCount || null,
