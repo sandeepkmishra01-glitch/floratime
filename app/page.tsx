@@ -247,7 +247,7 @@ export default function Home() {
                   className="px-2 py-1.5 text-[11px] bg-fern text-white rounded font-semibold hover:opacity-90 flex-shrink-0">Go</button>
               </div>
               {showLocationDropdown && locationSuggestions.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-white rounded-lg shadow-xl border border-sage z-50 max-h-48 overflow-y-auto">
+                <div className="absolute top-full mt-1 left-0 right-0 bg-white rounded-lg shadow-xl border border-sage z-[9999] max-h-48 overflow-y-auto">
                   {locationSuggestions.map((s, i) => (
                     <button key={i}
                       onMouseDown={() => selectLocation(s.lat, s.lon, s.display_name.split(",")[0])}
@@ -293,8 +293,8 @@ export default function Home() {
               </button>
               {showMonthPicker && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowMonthPicker(false)} />
-                  <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-xl border border-sage z-40 py-1 max-h-72 overflow-y-auto">
+                  <div className="fixed inset-0 z-[9998]" onClick={() => setShowMonthPicker(false)} />
+                  <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-xl border border-sage z-[9999] py-1 max-h-72 overflow-y-auto">
                     <button onClick={() => { setMonth(undefined); setShowMonthPicker(false); }}
                       className={`w-full text-left px-3 py-1.5 text-xs ${!month ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
                       All months

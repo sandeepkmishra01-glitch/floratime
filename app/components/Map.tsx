@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
+import { FlowerData } from "@/types";
+import { UrbanTree } from "@/types/trees";
 
 // Heatmap loaded via CDN — avoids npm install issues on Railway
 let heatLayer: ((latlngs: [number, number, number][], opts?: Record<string, unknown>) => L.Layer) | null = null;
@@ -22,7 +24,6 @@ function loadHeatmap(): Promise<void> {
     document.head.appendChild(script);
   });
 }
-import { FlowerData } from "@/types";
 
 // Fix Leaflet's default icon paths — must run after Leaflet is loaded
 function fixLeafletIcons() {
@@ -56,6 +57,27 @@ function getFlowerIcon(): L.DivIcon {
   return FLOWER_ICON;
 }
 
+let TREE_ICON: L.DivIcon | null = null;
+function getTreeIcon(): L.DivIcon {
+  if (!TREE_ICON) {
+    TREE_ICON = new L.DivIcon({
+      className: "flower-marker",
+      html: `<div style="
+        width: 22px; height: 22px;
+        background: linear-gradient(135deg, #8B4513, #654321);
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        display: flex; align-items: center; justify-content: center;
+      "><span style="font-size: 11px;">🌳</span></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -11],
+    });
+  }
+  return TREE_ICON;
+}
+
 function esc(s: string | null | undefined): string {
   if (!s) return "";
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -80,6 +102,7 @@ interface Props {
   tileLayer?: "light" | "terrain" | "transit";
   onFlowerClick?: (flower: FlowerData) => void;
   onMoveEnd?: (center: [number, number]) => void;
+  urbanTrees?: UrbanTree[];
 }
 
 const TILES: Record<string, { url: string; attribution: string; overlay?: { url: string; attr: string } }> = {
@@ -97,7 +120,7 @@ const TILES: Record<string, { url: string; attribution: string; overlay?: { url:
   },
 };
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd }: Props) {
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, urbanTrees }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
