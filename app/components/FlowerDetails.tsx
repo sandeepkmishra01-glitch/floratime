@@ -44,7 +44,10 @@ export default function FlowerDetails({ flower, onClose }: Props) {
   }, [flower.species]);
 
   const badge = SOURCE_BADGE[flower.source] || SOURCE_BADGE.gbif;
-  const displayImage = enrichment?.thumbnail || flower.photoUrl;
+  const displayImage =
+    enrichment?.thumbnail ||
+    enrichment?.trefleImageUrl ||
+    flower.photoUrl;
   const displayDesc = enrichment?.wikiSummary || flower.description;
   const displayWiki = enrichment?.wikiUrl || flower.wikiUrl;
   const displayFamily = enrichment?.family || flower.family;

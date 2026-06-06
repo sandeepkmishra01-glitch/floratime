@@ -117,7 +117,23 @@ export interface SpeciesEnrichment {
   family: string | null;
   genus: string | null;
   taxonomicStatus: string | null;
+  // POWO / Kew
+  kewFamily: string | null;
+  kewGenus: string | null;
+  kewNomenclaturalStatus: string | null;
+  kewLifeform: string | null;
+  kewClimate: string | null;
+  kewLocationCount: number | null;
+  kewSynonymCount: number | null;
+  // Trefle
+  trefleCommonName: string | null;
+  trefleFamilyCommon: string | null;
+  trefleImageUrl: string | null;
+  trefleStatus: string | null;
+  trefleYear: number | null;
+  trefleAuthor: string | null;
   // Wikidata
   commonName: string | null;
+  description: string | null;
   conservationStatus: string | null;
 }
