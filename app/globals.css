@@ -25,12 +25,16 @@ body {
   padding: 0;
 }
 
-/* Leaflet */
+/* Leaflet — force to background */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0 !important;
 }
+.leaflet-pane { z-index: 0 !important; }
+.leaflet-top, .leaflet-bottom { z-index: 5 !important; }
+.leaflet-control { z-index: 5 !important; }
+.leaflet-popup { z-index: 10 !important; }
 
 .flower-marker {
   background: transparent !important;

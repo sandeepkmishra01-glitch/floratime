@@ -317,8 +317,8 @@ export default function Home() {
 
         {/* ── Body: Map + Sidebar ── */}
         <div className="flex-1 min-h-0 flex flex-row">
-          {/* Map */}
-          <div className="flex-1 relative">
+          {/* Map — forced to background */}
+          <div className="flex-1 relative z-0">
             {error && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30
                               bg-red-50 border border-red-200 text-red-700
@@ -348,7 +348,7 @@ export default function Home() {
           </div>
 
           {/* ── Sidebar ── */}
-          <div className="w-72 lg:w-80 flex-shrink-0 bg-white border-l border-sage flex flex-col overflow-hidden">
+          <div className="w-72 lg:w-80 flex-shrink-0 bg-white border-l border-sage flex flex-col overflow-hidden relative z-20">
             {/* Area info */}
             {areaInfo && (
               <div className="p-3 border-b border-dashed border-gray-200 flex-shrink-0">
