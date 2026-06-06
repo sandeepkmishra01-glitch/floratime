@@ -79,6 +79,7 @@ interface Props {
   showHeatmap?: boolean;
   tileLayer?: "light" | "terrain" | "transit";
   onFlowerClick?: (flower: FlowerData) => void;
+  onMoveEnd?: (center: [number, number]) => void;
 }
 
 const TILES: Record<string, { url: string; attribution: string; overlay?: { url: string; attr: string } }> = {
@@ -96,7 +97,7 @@ const TILES: Record<string, { url: string; attribution: string; overlay?: { url:
   },
 };
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick }: Props) {
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
@@ -119,6 +120,15 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
     }).addTo(map);
 
     mapRef.current = map;
+
+    // Notify parent when user pans/zooms
+    if (onMoveEnd) {
+      map.on("moveend", () => {
+        const c = map.getCenter();
+        onMoveEnd([c.lat, c.lng]);
+      });
+    }
+
     return () => { map.remove(); mapRef.current = null; tileRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

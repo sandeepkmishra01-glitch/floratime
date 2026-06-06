@@ -60,6 +60,16 @@ export default function Home() {
   const [speciesInfo, setSpeciesInfo] = useState<WikiSpeciesInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
   const mapKey = useRef(0);
+  const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Debounced handler for map pan/zoom — updates area info + flowers
+  const handleMapMove = useCallback((newCenter: [number, number]) => {
+    if (moveTimer.current) clearTimeout(moveTimer.current);
+    moveTimer.current = setTimeout(() => {
+      setCenter(newCenter);
+      mapKey.current++;
+    }, 1500);
+  }, []);
 
   // Fetch flowers for current center
   const fetchFlowers = useCallback(async (loc: [number, number], m?: number) => {
@@ -198,6 +208,9 @@ export default function Home() {
             commonName: info.commonName || prev.commonName,
             wikiUrl: info.wikiUrl || prev.wikiUrl,
             description: info.description || prev.description,
+            conservationStatus: info.conservationStatus,
+            invasive: info.invasive,
+            toxic: info.toxic,
           } : prev);
         }
       }
@@ -214,7 +227,7 @@ export default function Home() {
     <ErrorBoundary>
       <div className="h-screen w-screen flex flex-col bg-cream">
         {/* ── Header ── */}
-        <header className="relative z-20 flex-shrink-0"
+        <header className="relative z-50 flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #006400 0%, #1e352f 100%)" }}>
           <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
             <h1 className="text-base font-bold text-white whitespace-nowrap mr-1 flex-shrink-0">FloraTime 🌸</h1>
@@ -322,6 +335,7 @@ export default function Home() {
               showHeatmap={showHeatmap}
               tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
+              onMoveEnd={handleMapMove}
             />
             {loading && flowers.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">

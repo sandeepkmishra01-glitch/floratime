@@ -13,6 +13,9 @@ export interface FlowerData {
   observerName: string | null;
   placeGuess: string | null;
   sourceUrl: string;
+  conservationStatus?: string | null;
+  invasive?: boolean | null;
+  toxic?: string | null;
 }
 
 export interface FlowerSearchParams {
@@ -62,4 +65,8 @@ export interface WikiSpeciesInfo {
   imageAttribution: string | null;
   wikiUrl: string | null;
   bloomMonths: number[] | null;
+  conservationStatus: string | null;
+  invasive: boolean | null;
+  toxic: string | null;
+  additionalImages: string[] | null;
 }

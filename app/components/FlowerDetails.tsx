@@ -98,6 +98,30 @@ export default function FlowerDetails({ flower, onClose }: Props) {
             )}
           </div>
 
+          {/* Risk & status badges */}
+          {(flower.conservationStatus || flower.invasive || flower.toxic) && (
+            <div className="flex flex-wrap gap-1.5">
+              {flower.conservationStatus && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full
+                                 bg-amber-50 text-amber-700 border border-amber-200">
+                  🛡️ {flower.conservationStatus}
+                </span>
+              )}
+              {flower.invasive && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full
+                                 bg-red-50 text-red-700 border border-red-200">
+                  ⚠️ Invasive
+                </span>
+              )}
+              {flower.toxic && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full
+                                 bg-red-50 text-red-700 border border-red-200">
+                  ☠️ {flower.toxic}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Separator */}
           <div className="border-t border-dashed border-gray-300" />
 

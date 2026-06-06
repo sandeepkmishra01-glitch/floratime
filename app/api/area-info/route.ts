@@ -7,12 +7,6 @@ interface AreaResult {
   displayName: string;
 }
 
-const PROTECTED_TYPES = new Set([
-  "national_park", "nature_reserve", "protected_area", "park",
-  "conservation", "wilderness", "wildlife_refuge", "state_park",
-  "county_park", "regional_park", "forest", "recreation_ground",
-]);
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get("lat");
@@ -23,93 +17,88 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Reverse geocode using Nominatim to find area features
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12&addressdetails=0`,
-      { headers: { "User-Agent": "FloraTime/1.0" } }
-    );
+    // First: query Overpass for nearby parks/nature areas (most reliable)
+    const overpassQuery = `[out:json];
+      (
+        way(around:3000,${lat},${lng})[leisure~"park|nature_reserve|garden|dog_park"][name];
+        relation(around:3000,${lat},${lng})[leisure~"park|nature_reserve|garden"][name];
+        way(around:3000,${lat},${lng})[boundary~"protected_area|national_park"][name];
+        relation(around:3000,${lat},${lng})[boundary~"protected_area|national_park"][name];
+        way(around:3000,${lat},${lng})[natural~"wood|scrub|heath"][name];
+      );
+      out tags 5;`;
 
-    if (!res.ok) {
-      return NextResponse.json(null);
-    }
+    const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "User-Agent": "FloraTime/1.0" },
+      body: overpassQuery,
+    });
 
-    const data = await res.json();
-    const osmType = data.osm_type;
-    const osmId = data.osm_id;
+    if (overpassRes.ok) {
+      const data = await overpassRes.json();
+      const elements = (data.elements || []) as any[];
 
-    if (!osmType || !osmId) {
-      return NextResponse.json(null);
-    }
+      if (elements.length > 0) {
+        // Pick the closest named park/nature area
+        const best = elements[0];
+        const tags = best.tags || {};
+        const isProtected =
+          tags.boundary === "protected_area" ||
+          tags.boundary === "national_park" ||
+          tags.leisure === "nature_reserve" ||
+          tags.protect_class !== undefined;
 
-    // Fetch detailed tags from OSM
-    const detailRes = await fetch(
-      `https://nominatim.openstreetmap.org/lookup?osm_ids=${osmType[0].toUpperCase()}${osmId}&format=json&addressdetails=0&extratags=1`,
-      { headers: { "User-Agent": "FloraTime/1.0" } }
-    );
+        const typeMap: Record<string, string> = {
+          park: "Park", nature_reserve: "Nature Reserve", garden: "Garden",
+          dog_park: "Dog Park", protected_area: "Protected Area",
+          national_park: "National Park", wood: "Woodland",
+          scrub: "Scrubland", heath: "Heathland",
+        };
 
-    if (!detailRes.ok) {
-      return NextResponse.json({
-        name: data.name || data.display_name?.split(",")[0] || "Unknown area",
-        type: data.category || data.type || "area",
-        protected: false,
-        displayName: data.display_name || "",
-      } as AreaResult);
-    }
+        const areaType = typeMap[tags.leisure || tags.boundary || tags.natural || ""] || "Natural Area";
 
-    const details = await detailRes.json();
-    const item = details[0] || {};
-    const extratags = item.extratags || {};
-    const tags = {
-      leisure: extratags.leisure || item.type || "",
-      boundary: extratags.boundary || "",
-      protect_class: extratags.protect_class || "",
-      access: extratags.access || "",
-      opening_hours: extratags.opening_hours || "",
-    };
+        const nearbyNames = elements.slice(1, 4)
+          .map((e: any) => e.tags?.name)
+          .filter(Boolean);
 
-    const isProtected = PROTECTED_TYPES.has(tags.leisure) ||
-      tags.boundary === "protected_area" ||
-      tags.boundary === "national_park" ||
-      !!tags.protect_class;
+        const result: AreaResult = {
+          name: tags.name || "Natural Area",
+          type: areaType,
+          protected: isProtected,
+          displayName: [
+            areaType,
+            isProtected ? "Protected" : null,
+            tags.access === "yes" ? "Public access" : null,
+            tags.opening_hours ? `Hours: ${tags.opening_hours}` : null,
+            nearbyNames.length > 0 ? `Near: ${nearbyNames.join(", ")}` : null,
+          ].filter(Boolean).join(" · "),
+        };
 
-    const areaType = tags.leisure ||
-      tags.boundary?.replace(/_/g, " ") ||
-      item.type ||
-      data.category ||
-      "area";
-
-    // Get also nearby parks via a separate query
-    const nearbyRes = await fetch(
-      `https://overpass-api.de/api/interpreter`,
-      {
-        method: "POST",
-        headers: { "User-Agent": "FloraTime/1.0" },
-        body: `[out:json];(way(around:2000,${lat},${lng})[leisure~"park|nature_reserve|garden"];relation(around:2000,${lat},${lng})[leisure~"park|nature_reserve|garden"];);out tags 3;`,
+        return NextResponse.json(result);
       }
-    );
-
-    let nearbyParks: string[] = [];
-    if (nearbyRes.ok) {
-      const nearbyData = await nearbyRes.json();
-      nearbyParks = (nearbyData.elements || [])
-        .map((e: any) => e.tags?.name)
-        .filter(Boolean)
-        .slice(0, 3);
     }
 
-    const result: AreaResult = {
-      name: item.name || data.name || data.display_name?.split(",")[0] || "Unknown area",
-      type: areaType.charAt(0).toUpperCase() + areaType.slice(1),
-      protected: isProtected,
-      displayName: [
-        item.name || data.name,
-        nearbyParks.length > 0 ? `Near: ${nearbyParks.join(", ")}` : null,
-        tags.access === "yes" ? "Public access" : tags.access === "no" ? "Restricted" : null,
-        tags.opening_hours ? `Hours: ${tags.opening_hours}` : null,
-      ].filter(Boolean).join(" · "),
-    };
+    // Fallback: Nominatim reverse geocode, but skip administrative boundaries
+    const nomRes = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=0`,
+      { headers: { "User-Agent": "FloraTime/1.0" } }
+    );
 
-    return NextResponse.json(result);
+    if (nomRes.ok) {
+      const nomData = await nomRes.json();
+      // Skip if it's an administrative boundary or generic road/place
+      const skipTypes = ["administrative", "road", "house", "building", "postcode"];
+      if (nomData.category && !skipTypes.includes(nomData.category)) {
+        return NextResponse.json({
+          name: nomData.name || nomData.display_name?.split(",")[0] || "Unknown",
+          type: (nomData.category || nomData.type || "area").replace(/_/g, " "),
+          protected: false,
+          displayName: nomData.display_name || "",
+        } as AreaResult);
+      }
+    }
+
+    return NextResponse.json(null);
   } catch (error) {
     console.error("Area info fetch failed:", error);
     return NextResponse.json(null);

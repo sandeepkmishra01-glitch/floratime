@@ -117,10 +117,35 @@ function parseEntity(entity: WDEntity, _qid: string): WikiSpeciesInfo {
     ? `https://en.wikipedia.org/wiki/${encodeURIComponent(enwiki.title.replace(/ /g, "_"))}`
     : null;
 
-  // Bloom months (qualifier on taxon range? — we use P2924: "flower color" is less useful)
-  // Many plants on Wikidata don't have structured bloom month data.
-  // We'll fall back to approximate bloom data later if needed.
+  // Bloom months — not commonly available in Wikidata for most plants
   const bloomMonths: number[] | null = null;
+
+  // IUCN Conservation status (P141)
+  const conservationClaim = claims.P141?.[0];
+  const conservationStatus: string | null =
+    conservationClaim?.mainsnak?.datavalue?.value
+      ? (conservationClaim.mainsnak.datavalue.value as any)?.id?.replace("Q", "") || null
+      : null;
+
+  // IUCN status label mapping
+  const iucnLabels: Record<string, string> = {
+    "278113": "Least Concern", "219127": "Least Concern",
+    "237350": "Vulnerable", "11394": "Endangered",
+    "219126": "Near Threatened", "324695": "Critically Endangered",
+    "300804": "Extinct in the Wild",
+  };
+  const iucnLabel = conservationStatus ? iucnLabels[conservationStatus] || conservationStatus : null;
+
+  // Invasive status (P5588 or check for "Invasive species" claims)
+  const invasive = claims.P5588 ? true : null;
+
+  // Toxicity (P789 — has quality "toxic", or P3487 "allergen")
+  const toxicClaim = claims.P789?.[0] || claims.P3487?.[0];
+  const toxic: string | null = toxicClaim ? "May be toxic or allergenic" : null;
+
+  // Additional images from Commons (P18 gives primary, but taxon often has gallery)
+  // We'll query Commons separately in the API route
+  const additionalImages: string[] | null = null;
 
   return {
     commonName,
@@ -131,6 +156,10 @@ function parseEntity(entity: WDEntity, _qid: string): WikiSpeciesInfo {
       : null,
     wikiUrl,
     bloomMonths,
+    conservationStatus: iucnLabel,
+    invasive,
+    toxic,
+    additionalImages,
   };
 }
 
