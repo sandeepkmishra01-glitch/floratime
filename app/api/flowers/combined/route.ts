@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     lat,
     lng,
     radius: Math.min(radius, 50),
-    per_page: Math.min(per_page, 100),
+    per_page: Math.min(per_page, 200),
     month,
   };
 

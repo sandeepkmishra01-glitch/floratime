@@ -56,7 +56,7 @@ export default function Home() {
         lat: loc[0].toString(),
         lng: loc[1].toString(),
         radius: "30",
-        per_page: "100",
+        per_page: "200",
       });
       if (m) params.set("month", m.toString());
       const res = await fetch(`/api/flowers/combined?${params.toString()}`);

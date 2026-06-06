@@ -63,7 +63,7 @@ export async function fetchFlowersWithCoords(
     hasGeospatialIssue: "false",
     basisOfRecord: "HUMAN_OBSERVATION",
     mediaType: "StillImage",
-    limit: Math.min(per_page, 100).toString(),
+    limit: Math.min(per_page, 200).toString(),
     offset: "0",
     year: `${currentYear - 2},${currentYear}`,
   });

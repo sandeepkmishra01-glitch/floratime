@@ -61,7 +61,7 @@ export async function fetchINatFlowers(
     lat: lat.toString(),
     lng: lng.toString(),
     radius: Math.min(radius, 50).toString(),
-    per_page: Math.min(per_page, 100).toString(),
+    per_page: Math.min(per_page, 200).toString(),
     captive: "false",            // wild-only: excludes gardens, zoos, planted
     quality_grade: "research,needs_id",
     order: "desc",
