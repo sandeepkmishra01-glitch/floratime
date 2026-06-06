@@ -382,7 +382,6 @@ export default function Home() {
               tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
               onMoveEnd={handleMapMove}
-              mode={mode}
               urbanTrees={urbanTrees}
               submissions={submissions}
             />

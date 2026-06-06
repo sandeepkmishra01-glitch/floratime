@@ -103,7 +103,6 @@ interface Props {
   tileLayer?: "light" | "terrain" | "transit";
   onFlowerClick?: (flower: FlowerData) => void;
   onMoveEnd?: (center: [number, number]) => void;
-  mode?: "flowers" | "trees";
   urbanTrees?: UrbanTree[];
   submissions?: UserSubmission[];
 }
@@ -123,7 +122,7 @@ const TILES: Record<string, { url: string; attribution: string; overlay?: { url:
   },
 };
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, mode = "flowers", urbanTrees, submissions }: Props) {
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, urbanTrees, submissions }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
@@ -161,15 +160,13 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update markers / heatmap (flowers mode only)
+  // Update markers / heatmap
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     markersRef.current.forEach(m => m.remove());
     markersRef.current.clear();
-
-    if (mode !== "flowers") return; // skip flowers in trees mode
 
     if (showHeatmap) {
       const points: [number, number, number][] = flowers
@@ -217,7 +214,7 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
         markersRef.current.set(f.id, marker);
       });
     }
-  }, [flowers, showHeatmap, onFlowerClick, mode]);
+  }, [flowers, showHeatmap, onFlowerClick]);
 
   // Render urban trees + user submissions (outside flower marker cycle — own cleanup)
   useEffect(() => {
