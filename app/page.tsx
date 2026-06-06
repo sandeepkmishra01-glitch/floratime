@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { FlowerData, WikiSpeciesInfo } from "@/types";
 import { UserSubmission } from "@/types/submissions";
 import AddObservation, { loadSubmissions } from "./components/AddObservation";
+import DropdownPortal from "./components/DropdownPortal";
 
 const FlowerMap = dynamic(() => import("./components/Map"), {
   ssr: false,
@@ -64,6 +65,8 @@ export default function Home() {
   const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const mapKey = useRef(0);
+  const monthBtnRef = useRef<HTMLButtonElement>(null);
+  const locationInputRef = useRef<HTMLDivElement>(null);
   const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Debounced handler for map pan/zoom — updates area info + flowers
@@ -238,7 +241,7 @@ export default function Home() {
             <h1 className="text-base font-bold text-white whitespace-nowrap mr-1 flex-shrink-0">FloraTime 🌸</h1>
 
             {/* Location search with autocomplete */}
-            <div className="relative flex-shrink-0" style={{ width: "170px" }}>
+            <div ref={locationInputRef} className="relative flex-shrink-0" style={{ width: "170px" }}>
               <div className="flex gap-1">
                 <input type="text" placeholder="City or place..."
                   value={locationSearch}
@@ -251,17 +254,17 @@ export default function Home() {
                 <button onClick={handleLocationSearch}
                   className="px-2 py-1.5 text-[11px] bg-fern text-white rounded font-semibold hover:opacity-90 flex-shrink-0">Go</button>
               </div>
-              {showLocationDropdown && locationSuggestions.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-white rounded-lg shadow-xl border border-sage z-[9999] max-h-48 overflow-y-auto">
-                  {locationSuggestions.map((s, i) => (
-                    <button key={i}
-                      onMouseDown={() => selectLocation(s.lat, s.lon, s.display_name.split(",")[0])}
-                      className="w-full text-left px-3 py-1.5 text-[11px] text-forest hover:bg-sage/50 border-b border-gray-50 last:border-0 truncate">
-                      {s.display_name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <DropdownPortal open={showLocationDropdown && locationSuggestions.length > 0}
+                onClose={() => setShowLocationDropdown(false)}
+                triggerRef={locationInputRef} align="left">
+                {locationSuggestions.map((s, i) => (
+                  <button key={i}
+                    onMouseDown={() => selectLocation(s.lat, s.lon, s.display_name.split(",")[0])}
+                    className="w-full text-left px-3 py-1.5 text-[11px] text-forest hover:bg-sage/50 border-b border-gray-50 last:border-0 truncate">
+                    {s.display_name}
+                  </button>
+                ))}
+              </DropdownPortal>
             </div>
 
             {/* Species filter */}
@@ -298,29 +301,24 @@ export default function Home() {
 
             {/* Month filter */}
             <div className="relative flex-shrink-0">
-              <button onClick={() => setShowMonthPicker(!showMonthPicker)}
+              <button ref={monthBtnRef} onClick={() => setShowMonthPicker(!showMonthPicker)}
                 className="flex items-center gap-0.5 px-2 py-1.5 text-[11px] font-semibold rounded
                            bg-white/15 text-white border border-white/20 hover:bg-white/25 whitespace-nowrap">
                 📅 {month ? MONTHS[month - 1] : "Month"}
               </button>
-              {showMonthPicker && (
-                <>
-                  <div className="fixed inset-0 z-[9998]" onClick={() => setShowMonthPicker(false)} />
-                  <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-xl border border-sage z-[9999] py-1 max-h-72 overflow-y-auto">
-                    <button onClick={() => { setMonth(undefined); setShowMonthPicker(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-xs ${!month ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
-                      All months
-                    </button>
-                    <div className="border-t border-dashed border-gray-300 my-0.5" />
-                    {MONTHS.map((name, i) => (
-                      <button key={name} onClick={() => { setMonth(i + 1); setShowMonthPicker(false); }}
-                        className={`w-full text-left px-3 py-1.5 text-xs ${month === i + 1 ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
-                        {name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+              <DropdownPortal open={showMonthPicker} onClose={() => setShowMonthPicker(false)} triggerRef={monthBtnRef}>
+                <button onClick={() => { setMonth(undefined); setShowMonthPicker(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-xs ${!month ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
+                  All months
+                </button>
+                <div className="border-t border-dashed border-gray-300 my-0.5" />
+                {MONTHS.map((name, i) => (
+                  <button key={name} onClick={() => { setMonth(i + 1); setShowMonthPicker(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-xs ${month === i + 1 ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
+                    {name}
+                  </button>
+                ))}
+              </DropdownPortal>
             </div>
 
             <span className="text-white/40 text-[10px] whitespace-nowrap flex-shrink-0">{loading ? "..." : `${total}`}</span>
@@ -329,8 +327,8 @@ export default function Home() {
 
         {/* ── Body: Map + Sidebar ── */}
         <div className="flex-1 min-h-0 flex flex-row">
-          {/* Map — forced to background */}
-          <div className="flex-1 relative z-0">
+          {/* Map */}
+          <div className="flex-1 relative">
             {error && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30
                               bg-red-50 border border-red-200 text-red-700
