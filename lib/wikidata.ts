@@ -88,7 +88,7 @@ function commonsImageUrl(filename: string, width = 500): string {
 /**
  * Parse Wikidata claims to extract a WikiSpeciesInfo object.
  */
-function parseEntity(entity: WDEntity, qid: string): WikiSpeciesInfo {
+function parseEntity(entity: WDEntity, _qid: string): WikiSpeciesInfo {
   const claims = entity.claims || {};
 
   // Common name (P1843 — taxon common name)

@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import FlowerMap from "./components/Map";
+import dynamic from "next/dynamic";
 import FlowerDetails from "./components/FlowerDetails";
 import { FlowerData } from "@/types";
+
+// Leaflet requires window — disable SSR for the map component
+const FlowerMap = dynamic(() => import("./components/Map"), { ssr: false });
 
 const DC_CENTER: [number, number] = [38.9072, -77.0369];
 const DC_ZOOM = 12;

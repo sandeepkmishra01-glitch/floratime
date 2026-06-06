@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import { FlowerData } from "@/types";
 
@@ -47,7 +47,6 @@ export default function FlowerMap({
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
-  const [mapReady, setMapReady] = useState(false);
 
   // Initialize map once
   useEffect(() => {
@@ -63,12 +62,10 @@ export default function FlowerMap({
     }).addTo(map);
 
     mapRef.current = map;
-    setMapReady(true);
 
     return () => {
       map.remove();
       mapRef.current = null;
-      setMapReady(false);
     };
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
