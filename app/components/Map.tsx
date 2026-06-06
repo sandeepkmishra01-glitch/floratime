@@ -100,10 +100,11 @@ export default function FlowerMap({
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current).setView(center, zoom);
-
-    L.tileLayer("https://tiles.openfreemap.org/liberty/{z}/{x}/{y}.png", {
+    // CartoDB Positron tiles: free, no key, clean light style
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution:
-        '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> | <a href="https://openstreetmap.org">OSM</a>',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
+      subdomains: "abcd",
       maxZoom: 19,
     }).addTo(map);
 
