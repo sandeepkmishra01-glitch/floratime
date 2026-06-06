@@ -2,7 +2,26 @@
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import "leaflet.heat";
+
+// Heatmap loaded via CDN — avoids npm install issues on Railway
+let heatLayer: ((latlngs: [number, number, number][], opts?: Record<string, unknown>) => L.Layer) | null = null;
+
+function loadHeatmap(): Promise<void> {
+  return new Promise((resolve) => {
+    if (heatLayer) return resolve();
+    if ((L as any).heatLayer) {
+      heatLayer = (L as any).heatLayer;
+      return resolve();
+    }
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js";
+    script.onload = () => {
+      heatLayer = (L as any).heatLayer;
+      resolve();
+    };
+    document.head.appendChild(script);
+  });
+}
 import { FlowerData } from "@/types";
 
 // Fix Leaflet default icon paths
@@ -75,7 +94,7 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update markers
+  // Update markers / heatmap
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -84,22 +103,24 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
     markersRef.current.clear();
 
     if (showHeatmap) {
-      // Heatmap mode: hide individual markers, show density layer
       const points: [number, number, number][] = flowers
         .filter(f => f.lat && f.lng)
         .map(f => [f.lat, f.lng, 0.5] as [number, number, number]);
 
       if (heatRef.current) heatRef.current.remove();
       if (points.length > 0) {
-        heatRef.current = (L as any).heatLayer(points, {
-          radius: 25,
-          blur: 15,
-          maxZoom: 10,
-          gradient: { 0.2: "#dfefd3", 0.5: "#5fb021", 0.8: "#468019", 1.0: "#1e352f" },
-        }).addTo(map);
+        loadHeatmap().then(() => {
+          if (heatLayer) {
+            heatRef.current = heatLayer(points, {
+              radius: 25,
+              blur: 15,
+              maxZoom: 10,
+              gradient: { 0.2: "#dfefd3", 0.5: "#5fb021", 0.8: "#468019", 1.0: "#1e352f" },
+            }).addTo(map);
+          }
+        });
       }
     } else {
-      // Marker mode
       if (heatRef.current) { heatRef.current.remove(); heatRef.current = null; }
 
       flowers.forEach(f => {
