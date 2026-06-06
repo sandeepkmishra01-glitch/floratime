@@ -155,8 +155,8 @@ export default function Home() {
     });
   };
 
-  // Simple click — just show what GBIF gave us, no extra fetches
   const handleFlowerClick = useCallback((f: FlowerData) => {
+    console.log("[FloraTime] CLICKED:", f.species, f);
     setSelectedFlower(f);
   }, []);
 
@@ -200,12 +200,17 @@ export default function Home() {
               </DropdownPortal>
             </div>
 
-            {/* Species filter */}
-            <input type="text" placeholder="Filter species..."
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="flex-shrink-0 px-2 py-1.5 text-[11px] rounded bg-white/15 text-white
-                         placeholder-white/50 border border-white/20 w-[120px]
-                         focus:outline-none focus:border-fern" />
+            {/* TEST: direct click — remove after debug */}
+            <button onClick={() => {
+              if (flowers.length > 0) {
+                console.log("[FloraTime] TEST button — setting flower:", flowers[0].species);
+                setSelectedFlower(flowers[0]);
+              }
+            }}
+              className="flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded
+                         bg-red-600 text-white hover:bg-red-700 transition whitespace-nowrap">
+              TEST
+            </button>
 
             {/* Add observation */}
             <button onClick={() => setShowAddForm(true)}
@@ -288,6 +293,12 @@ export default function Home() {
         {/* ── Detail Panel ── */}
         {selectedFlower && (
           <FlowerDetails flower={selectedFlower} onClose={handleClose} />
+        )}
+        {/* DEBUG: shows when selectedFlower is set */}
+        {selectedFlower && (
+          <div className="fixed top-16 right-4 z-[9999] bg-red-500 text-white px-3 py-1 text-xs rounded-full font-mono shadow-lg">
+            SELECTED: {selectedFlower.species}
+          </div>
         )}
 
         {/* Add observation form */}

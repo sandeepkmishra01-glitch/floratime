@@ -18,7 +18,7 @@ function safeDate(d: string): string {
 
 export default function FlowerDetails({ flower, onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[9998] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-forest/40" onClick={onClose} />
 
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl
