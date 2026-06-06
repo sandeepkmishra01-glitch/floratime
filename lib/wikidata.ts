@@ -92,9 +92,15 @@ function parseEntity(entity: WDEntity, _qid: string): WikiSpeciesInfo {
   const claims = entity.claims || {};
 
   // Common name (P1843 — taxon common name)
+  // Wikidata returns monolingual text: {text: "name", language: "en"}
   const commonNameClaim = claims.P1843?.[0];
-  const commonName =
-    (commonNameClaim?.mainsnak?.datavalue?.value as string) || null;
+  const rawName = commonNameClaim?.mainsnak?.datavalue?.value;
+  const commonName: string | null =
+    (typeof rawName === "object" && rawName !== null && "text" in rawName
+      ? (rawName as { text: string }).text
+      : typeof rawName === "string"
+        ? rawName
+        : null);
 
   // English description
   const description =
