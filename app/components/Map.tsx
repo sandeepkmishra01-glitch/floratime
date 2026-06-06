@@ -81,17 +81,17 @@ interface Props {
   onFlowerClick?: (flower: FlowerData) => void;
 }
 
-const TILES: Record<string, { url: string; attribution: string }> = {
+const TILES: Record<string, { url: string; attribution: string; overlay?: { url: string; attr: string } }> = {
   light: {
     url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
   },
   terrain: {
     url: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> | <a href="https://osm.org">OSM</a>',
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> | OSM',
   },
   transit: {
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | <a href="https://carto.com/">CARTO</a>',
   },
 };
@@ -117,15 +117,6 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
       subdomains: "abcd",
       maxZoom: 19,
     }).addTo(map);
-
-    // Add transit overlay when transit mode
-    if (tileLayer === "transit") {
-      L.tileLayer("https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://memomaps.de/">MeMoMaps</a>',
-        maxZoom: 18,
-        opacity: 0.5,
-      }).addTo(map);
-    }
 
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; tileRef.current = null; };

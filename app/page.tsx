@@ -51,6 +51,9 @@ export default function Home() {
   const [tileLayer, setTileLayer] = useState<"light" | "terrain" | "transit">("light");
   const [search, setSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const locationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [center, setCenter] = useState<[number, number]>([38.9072, -77.0369]);
   const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
   const [selectedSpecies, setSelectedSpecies] = useState<Set<string>>(new Set());
@@ -99,19 +102,45 @@ export default function Home() {
     fetchAreaInfo(center);
   }, [center, month, fetchFlowers, fetchAreaInfo]);
 
-  // Geocode location search
+  // Geocode location search with autocomplete
+  const handleLocationInput = useCallback((val: string) => {
+    setLocationSearch(val);
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    if (val.length < 2) { setLocationSuggestions([]); setShowLocationDropdown(false); return; }
+    locationTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val + ", USA")}&limit=5&addressdetails=0`,
+          { headers: { "User-Agent": "FloraTime/1.0" } }
+        );
+        const data = await res.json();
+        setLocationSuggestions(data);
+        setShowLocationDropdown(data.length > 0);
+      } catch { setLocationSuggestions([]); }
+    }, 300);
+  }, []);
+
+  const selectLocation = useCallback((lat: string, lon: string, name: string) => {
+    const newCenter: [number, number] = [parseFloat(lat), parseFloat(lon)];
+    setCenter(newCenter);
+    mapKey.current++;
+    setLocationSearch(name);
+    setLocationSuggestions([]);
+    setShowLocationDropdown(false);
+  }, []);
+
   const handleLocationSearch = useCallback(async () => {
     if (!locationSearch.trim()) return;
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationSearch + ", USA")}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationSearch + ", USA")}&limit=1`,
+        { headers: { "User-Agent": "FloraTime/1.0" } }
       );
       const data = await res.json();
       if (data[0]) {
         const newCenter: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
         setCenter(newCenter);
         mapKey.current++;
-        setLocationSearch("");
       }
     } catch { /* ignore */ }
   }, [locationSearch]);
@@ -187,65 +216,72 @@ export default function Home() {
         {/* ── Header ── */}
         <header className="relative z-20 flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #006400 0%, #1e352f 100%)" }}>
-          <div className="px-3 py-2 flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold text-white whitespace-nowrap">FloraTime 🌸</h1>
+          <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
+            <h1 className="text-base font-bold text-white whitespace-nowrap mr-1 flex-shrink-0">FloraTime 🌸</h1>
 
-            {/* Location search */}
-            <div className="flex-1 min-w-[140px] max-w-[220px] flex gap-1">
-              <input
-                type="text" placeholder="City, park, or place..."
-                value={locationSearch}
-                onChange={e => setLocationSearch(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleLocationSearch()}
-                className="flex-1 px-2.5 py-1.5 text-xs rounded-lg bg-white/15 text-white
-                           placeholder-white/50 border border-white/20
-                           focus:outline-none focus:border-fern transition" />
-              <button onClick={handleLocationSearch}
-                className="px-2 py-1.5 text-xs bg-fern text-white rounded-lg font-semibold hover:opacity-90">
-                Go
-              </button>
+            {/* Location search with autocomplete */}
+            <div className="relative flex-shrink-0" style={{ width: "170px" }}>
+              <div className="flex gap-1">
+                <input type="text" placeholder="City or place..."
+                  value={locationSearch}
+                  onChange={e => handleLocationInput(e.target.value)}
+                  onFocus={() => locationSuggestions.length > 0 && setShowLocationDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowLocationDropdown(false), 200)}
+                  onKeyDown={e => e.key === "Enter" && handleLocationSearch()}
+                  className="w-full px-2 py-1.5 text-[11px] rounded bg-white/15 text-white
+                             placeholder-white/50 border border-white/20 focus:outline-none focus:border-fern" />
+                <button onClick={handleLocationSearch}
+                  className="px-2 py-1.5 text-[11px] bg-fern text-white rounded font-semibold hover:opacity-90 flex-shrink-0">Go</button>
+              </div>
+              {showLocationDropdown && locationSuggestions.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-white rounded-lg shadow-xl border border-sage z-50 max-h-48 overflow-y-auto">
+                  {locationSuggestions.map((s, i) => (
+                    <button key={i}
+                      onMouseDown={() => selectLocation(s.lat, s.lon, s.display_name.split(",")[0])}
+                      className="w-full text-left px-3 py-1.5 text-[11px] text-forest hover:bg-sage/50 border-b border-gray-50 last:border-0 truncate">
+                      {s.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Species search */}
-            <input
-              type="text" placeholder="Filter species..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 min-w-[120px] max-w-[200px] px-2.5 py-1.5 text-xs rounded-lg
-                         bg-white/15 text-white placeholder-white/50 border border-white/20
-                         focus:outline-none focus:border-fern transition" />
+            {/* Species filter */}
+            <input type="text" placeholder="Filter species..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="flex-shrink-0 px-2 py-1.5 text-[11px] rounded bg-white/15 text-white
+                         placeholder-white/50 border border-white/20 w-[120px]
+                         focus:outline-none focus:border-fern" />
 
-            {/* Layer toggle */}
-            <select
-              value={tileLayer}
+            {/* Map layer */}
+            <select value={tileLayer}
               onChange={e => setTileLayer(e.target.value as "light" | "terrain" | "transit")}
-              className="px-2 py-1.5 text-xs rounded-lg bg-white/15 text-white border border-white/20
-                         focus:outline-none cursor-pointer"
-            >
-              <option value="light">🗺️ Map</option>
-              <option value="terrain">⛰️ Terrain</option>
-              <option value="transit">🚇 Transit</option>
+              className="flex-shrink-0 px-1.5 py-1.5 text-[11px] rounded bg-white/15 text-white
+                         border border-white/20 focus:outline-none cursor-pointer appearance-none text-center"
+              style={{ width: "36px" }}>
+              <option value="light">🗺️</option>
+              <option value="terrain">⛰️</option>
+              <option value="transit">🚇</option>
             </select>
 
             {/* Heatmap */}
             <button onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition
+              className={`flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded border transition
                 ${showHeatmap ? "bg-fern text-white border-fern" : "bg-white/15 text-white border-white/20 hover:bg-white/25"}`}>
               🔥
             </button>
 
-            {/* Month */}
-            <div className="relative">
+            {/* Month filter */}
+            <div className="relative flex-shrink-0">
               <button onClick={() => setShowMonthPicker(!showMonthPicker)}
-                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg
-                           bg-white/15 text-white border border-white/20 hover:bg-white/25">
-                📅 {month ? MONTHS[month - 1].slice(0, 3) : "All"}
+                className="flex items-center gap-0.5 px-2 py-1.5 text-[11px] font-semibold rounded
+                           bg-white/15 text-white border border-white/20 hover:bg-white/25 whitespace-nowrap">
+                📅 {month ? MONTHS[month - 1] : "Month"}
               </button>
               {showMonthPicker && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowMonthPicker(false)} />
-                  <div className="absolute right-0 mt-1.5 w-36 bg-white rounded-lg shadow-xl
-                                  border border-sage z-40 py-1 max-h-64 overflow-y-auto">
+                  <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-xl border border-sage z-40 py-1 max-h-72 overflow-y-auto">
                     <button onClick={() => { setMonth(undefined); setShowMonthPicker(false); }}
                       className={`w-full text-left px-3 py-1.5 text-xs ${!month ? "bg-sage text-forest font-semibold" : "text-forest hover:bg-sage/50"}`}>
                       All months
@@ -262,7 +298,7 @@ export default function Home() {
               )}
             </div>
 
-            <span className="text-white/50 text-[10px]">{loading ? "..." : `${total} obs`}</span>
+            <span className="text-white/40 text-[10px] whitespace-nowrap flex-shrink-0">{loading ? "..." : `${total}`}</span>
           </div>
         </header>
 
