@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import { FlowerData } from "@/types";
 import { UrbanTree } from "@/types/trees";
+import { UserSubmission } from "@/types/submissions";
 
 // Heatmap loaded via CDN — avoids npm install issues on Railway
 let heatLayer: ((latlngs: [number, number, number][], opts?: Record<string, unknown>) => L.Layer) | null = null;
@@ -103,6 +104,7 @@ interface Props {
   onFlowerClick?: (flower: FlowerData) => void;
   onMoveEnd?: (center: [number, number]) => void;
   urbanTrees?: UrbanTree[];
+  submissions?: UserSubmission[];
 }
 
 const TILES: Record<string, { url: string; attribution: string; overlay?: { url: string; attr: string } }> = {
@@ -120,7 +122,7 @@ const TILES: Record<string, { url: string; attribution: string; overlay?: { url:
   },
 };
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, urbanTrees }: Props) {
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, urbanTrees, submissions }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
@@ -211,6 +213,49 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
       });
     }
   }, [flowers, showHeatmap, onFlowerClick]);
+
+  // Render urban trees + user submissions (orange/brown markers)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Urban trees from DC gov data
+    if (urbanTrees?.length) {
+      urbanTrees.forEach(t => {
+        if (!t.lat || !t.lng) return;
+        L.marker([t.lat, t.lng], { icon: getTreeIcon() })
+          .addTo(map)
+          .bindPopup(`<div style="min-width:140px;font-family:'Source Sans Pro',sans-serif;">
+            <strong>${esc(t.species)}</strong>
+            ${t.commonName ? `<br/><em>${esc(t.commonName)}</em>` : ""}
+            ${t.condition ? `<br/>Condition: ${esc(t.condition)}` : ""}
+            ${t.dbh ? `<br/>DBH: ${t.dbh}"` : ""}
+            ${t.ward ? `<br/>${esc(t.ward)}` : ""}
+          </div>`, { maxWidth: 200 });
+      });
+    }
+
+    // User submissions (orange)
+    if (submissions?.length) {
+      const subIcon = new L.DivIcon({
+        className: "flower-marker",
+        html: `<div style="width:24px;height:24px;background:#f59e0b;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><span style="font-size:12px;">📝</span></div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      submissions.forEach(s => {
+        L.marker([s.lat, s.lng], { icon: subIcon })
+          .addTo(map)
+          .bindPopup(`<div style="min-width:150px;font-family:'Source Sans Pro',sans-serif;">
+            <strong>${esc(s.species)}</strong>
+            ${s.commonName ? `<br/><em>${esc(s.commonName)}</em>` : ""}
+            ${s.notes ? `<br/><span style="font-size:11px;">${esc(s.notes)}</span>` : ""}
+            <br/><span style="font-size:10px;color:#999;">Added by community</span>
+          </div>`, { maxWidth: 220 });
+      });
+    }
+  }, [urbanTrees, submissions]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

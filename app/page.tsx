@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import FlowerDetails from "./components/FlowerDetails";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FlowerData, WikiSpeciesInfo } from "@/types";
+import { UserSubmission } from "@/types/submissions";
+import AddObservation, { loadSubmissions } from "./components/AddObservation";
 
 const FlowerMap = dynamic(() => import("./components/Map"), {
   ssr: false,
@@ -59,6 +61,8 @@ export default function Home() {
   const [selectedSpecies, setSelectedSpecies] = useState<Set<string>>(new Set());
   const [speciesInfo, setSpeciesInfo] = useState<WikiSpeciesInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
+  const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
   const mapKey = useRef(0);
   const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -110,6 +114,7 @@ export default function Home() {
   useEffect(() => {
     fetchFlowers(center, month);
     fetchAreaInfo(center);
+    setSubmissions(loadSubmissions());
   }, [center, month, fetchFlowers, fetchAreaInfo]);
 
   // Geocode location search with autocomplete
@@ -284,6 +289,13 @@ export default function Home() {
               🔥
             </button>
 
+            {/* Add observation */}
+            <button onClick={() => setShowAddForm(true)}
+              className="flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded
+                         bg-amber-600 text-white hover:bg-amber-700 transition whitespace-nowrap">
+              🌱 Add
+            </button>
+
             {/* Month filter */}
             <div className="relative flex-shrink-0">
               <button onClick={() => setShowMonthPicker(!showMonthPicker)}
@@ -336,6 +348,8 @@ export default function Home() {
               tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
               onMoveEnd={handleMapMove}
+              urbanTrees={undefined}
+              submissions={submissions}
             />
             {loading && flowers.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
@@ -428,6 +442,15 @@ export default function Home() {
         {/* ── Detail Panel ── */}
         {selectedFlower && (
           <FlowerDetails flower={selectedFlower} onClose={handleClose} />
+        )}
+
+        {/* Add observation form */}
+        {showAddForm && (
+          <AddObservation
+            center={center}
+            onSubmit={(s) => setSubmissions(prev => [...prev, s])}
+            onClose={() => setShowAddForm(false)}
+          />
         )}
       </div>
     </ErrorBoundary>
