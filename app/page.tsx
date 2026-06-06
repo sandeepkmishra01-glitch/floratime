@@ -6,8 +6,10 @@ import FlowerDetails from "./components/FlowerDetails";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FlowerData, WikiSpeciesInfo } from "@/types";
 import { UserSubmission } from "@/types/submissions";
+import { UrbanTree } from "@/types/trees";
 import AddObservation, { loadSubmissions } from "./components/AddObservation";
 import DropdownPortal from "./components/DropdownPortal";
+import SpeciesSidebar from "./components/SpeciesSidebar";
 
 const FlowerMap = dynamic(() => import("./components/Map"), {
   ssr: false,
@@ -64,6 +66,8 @@ export default function Home() {
   const [infoLoading, setInfoLoading] = useState(false);
   const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showUrbanTrees, setShowUrbanTrees] = useState(false);
+  const [urbanTrees, setUrbanTrees] = useState<UrbanTree[]>([]);
   const mapKey = useRef(0);
   const monthBtnRef = useRef<HTMLButtonElement>(null);
   const locationInputRef = useRef<HTMLDivElement>(null);
@@ -119,6 +123,23 @@ export default function Home() {
     fetchAreaInfo(center);
     setSubmissions(loadSubmissions());
   }, [center, month, fetchFlowers, fetchAreaInfo]);
+
+  // Fetch urban trees when toggled
+  const toggleUrbanTrees = useCallback(async () => {
+    if (showUrbanTrees) {
+      setShowUrbanTrees(false);
+      setUrbanTrees([]);
+      return;
+    }
+    setShowUrbanTrees(true);
+    try {
+      const res = await fetch(`/api/urban-trees?lat=${center[0]}&lng=${center[1]}&radius=1000`);
+      if (res.ok) {
+        const data = await res.json();
+        setUrbanTrees(data.trees || []);
+      }
+    } catch { setUrbanTrees([]); }
+  }, [showUrbanTrees, center]);
 
   // Geocode location search with autocomplete
   const handleLocationInput = useCallback((val: string) => {
@@ -299,6 +320,13 @@ export default function Home() {
               🌱 Add
             </button>
 
+            {/* Urban trees */}
+            <button onClick={toggleUrbanTrees}
+              className={`flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded border transition whitespace-nowrap
+                ${showUrbanTrees ? "bg-amber-800 text-white border-amber-800" : "bg-white/15 text-white border-white/20 hover:bg-white/25"}`}>
+              🌳 Trees
+            </button>
+
             {/* Month filter */}
             <div className="relative flex-shrink-0">
               <button ref={monthBtnRef} onClick={() => setShowMonthPicker(!showMonthPicker)}
@@ -346,7 +374,7 @@ export default function Home() {
               tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
               onMoveEnd={handleMapMove}
-              urbanTrees={undefined}
+              urbanTrees={urbanTrees}
               submissions={submissions}
             />
             {loading && flowers.length === 0 && (
@@ -380,60 +408,17 @@ export default function Home() {
             )}
 
             {/* Species filter list */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-2 border-b border-dashed border-gray-200">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-1">
-                  Species ({uniqueSpecies.length})
-                  {selectedSpecies.size > 0 && (
-                    <button onClick={() => setSelectedSpecies(new Set())}
-                      className="ml-2 text-fern hover:underline font-normal normal-case">clear</button>
-                  )}
-                </p>
-              </div>
-
-              {uniqueSpecies.length === 0 ? (
-                <div className="p-4 text-center text-xs text-gray-400">
-                  {loading ? "Loading..." : "No species found"}
-                </div>
-              ) : (
-                uniqueSpecies.map(s => (
-                  <button
-                    key={s.name}
-                    onClick={() => toggleSpecies(s.name)}
-                    className={`w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-sage/30 transition border-b border-gray-50
-                      ${selectedSpecies.has(s.name) ? "bg-sage/50" : ""}`}
-                  >
-                    <div className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition
-                      ${selectedSpecies.has(s.name) ? "bg-fern border-fern" : "border-gray-300"}`}>
-                      {selectedSpecies.has(s.name) && (
-                        <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    {s.photo ? (
-                      <img src={s.photo} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0"
-                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    ) : (
-                      <div className="w-7 h-7 rounded bg-sage/30 flex-shrink-0 flex items-center justify-center text-xs">🌸</div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold italic text-forest truncate">{s.name}</p>
-                      {s.common && <p className="text-[10px] text-fern truncate">{s.common}</p>}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* Selected count footer */}
-            {selectedSpecies.size > 0 && (
-              <div className="p-2 border-t border-dashed border-gray-200 bg-sage/30 flex-shrink-0">
-                <p className="text-xs text-forest text-center font-semibold">
-                  Showing {filtered.length} of {flowers.length} observations
-                </p>
-              </div>
-            )}
+            <SpeciesSidebar
+              species={uniqueSpecies}
+              selectedSpecies={selectedSpecies}
+              loading={loading}
+              filteredCount={filtered.length}
+              totalCount={flowers.length}
+              onToggleSpecies={toggleSpecies}
+              onClearSelection={() => setSelectedSpecies(new Set())}
+              onClickSpecies={handleFlowerClick}
+              flowers={flowers}
+            />
           </div>
         </div>
 
