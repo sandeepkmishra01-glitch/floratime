@@ -4,9 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import FlowerDetails from "./components/FlowerDetails";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { FlowerData, WikiSpeciesInfo } from "@/types";
+import { FlowerData } from "@/types";
 import { UserSubmission } from "@/types/submissions";
-import { UrbanTree } from "@/types/trees";
 import AddObservation, { loadSubmissions } from "./components/AddObservation";
 import DropdownPortal from "./components/DropdownPortal";
 import SpeciesSidebar from "./components/SpeciesSidebar";
@@ -28,22 +27,6 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-interface AreaInfo {
-  name: string;
-  type: string;
-  protected: boolean;
-  displayName: string;
-}
-
-function safeDate(d: string): string {
-  try {
-    const clean = d.split("/")[0].trim();
-    const date = new Date(clean);
-    if (isNaN(date.getTime())) return d;
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  } catch { return d; }
-}
-
 export default function Home() {
   const [flowers, setFlowers] = useState<FlowerData[]>([]);
   const [total, setTotal] = useState(0);
@@ -52,37 +35,19 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState<number | undefined>(undefined);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [tileLayer, setTileLayer] = useState<"light" | "terrain" | "transit">("light");
   const [search, setSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const locationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [center, setCenter] = useState<[number, number]>([38.9072, -77.0369]);
-  const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
   const [selectedSpecies, setSelectedSpecies] = useState<Set<string>>(new Set());
-  const [speciesInfo, setSpeciesInfo] = useState<WikiSpeciesInfo | null>(null);
-  const [infoLoading, setInfoLoading] = useState(false);
   const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [mode, setMode] = useState<"flowers" | "trees">("flowers");
-  const [urbanTrees, setUrbanTrees] = useState<UrbanTree[]>([]);
-  const mapKey = useRef(0);
   const monthBtnRef = useRef<HTMLButtonElement>(null);
   const locationInputRef = useRef<HTMLDivElement>(null);
+  const locationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Debounced handler for map pan/zoom — updates area info + flowers
-  const handleMapMove = useCallback((newCenter: [number, number]) => {
-    if (moveTimer.current) clearTimeout(moveTimer.current);
-    moveTimer.current = setTimeout(() => {
-      setCenter(newCenter);
-      mapKey.current++;
-    }, 1500);
-  }, []);
-
-  // Fetch flowers for current center
   const fetchFlowers = useCallback(async (loc: [number, number], m?: number) => {
     setLoading(true);
     setError(null);
@@ -107,42 +72,19 @@ export default function Home() {
     }
   }, []);
 
-  // Fetch area info for current center
-  const fetchAreaInfo = useCallback(async (loc: [number, number]) => {
-    try {
-      const res = await fetch(`/api/area-info?lat=${loc[0]}&lng=${loc[1]}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAreaInfo(data);
-      }
-    } catch { setAreaInfo(null); }
-  }, []);
-
+  // Fetch on mount and when center/month change
   useEffect(() => {
     fetchFlowers(center, month);
-    fetchAreaInfo(center);
     setSubmissions(loadSubmissions());
-  }, [center, month, fetchFlowers, fetchAreaInfo]);
+  }, [center, month, fetchFlowers]);
 
-  // Switch mode: flowers or trees (exclusive)
-  const switchMode = useCallback(async (newMode: "flowers" | "trees") => {
-    if (newMode === mode) return;
-    setMode(newMode);
-    if (newMode === "flowers") {
-      setUrbanTrees([]);
-      return;
-    }
-    // Trees mode: fetch urban trees for current center
-    try {
-      const res = await fetch(`/api/urban-trees?lat=${center[0]}&lng=${center[1]}&radius=1000`);
-      if (res.ok) {
-        const data = await res.json();
-        setUrbanTrees(data.trees || []);
-      }
-    } catch { setUrbanTrees([]); }
-  }, [mode, center]);
+  // Pan handler — just update center, triggers the useEffect above
+  const handleMapMove = useCallback((newCenter: [number, number]) => {
+    if (moveTimer.current) clearTimeout(moveTimer.current);
+    moveTimer.current = setTimeout(() => setCenter(newCenter), 1500);
+  }, []);
 
-  // Geocode location search with autocomplete
+  // Location search with autocomplete
   const handleLocationInput = useCallback((val: string) => {
     setLocationSearch(val);
     if (locationTimer.current) clearTimeout(locationTimer.current);
@@ -161,9 +103,7 @@ export default function Home() {
   }, []);
 
   const selectLocation = useCallback((lat: string, lon: string, name: string) => {
-    const newCenter: [number, number] = [parseFloat(lat), parseFloat(lon)];
-    setCenter(newCenter);
-    mapKey.current++;
+    setCenter([parseFloat(lat), parseFloat(lon)]);
     setLocationSearch(name);
     setLocationSuggestions([]);
     setShowLocationDropdown(false);
@@ -177,15 +117,10 @@ export default function Home() {
         { headers: { "User-Agent": "FloraTime/1.0" } }
       );
       const data = await res.json();
-      if (data[0]) {
-        const newCenter: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-        setCenter(newCenter);
-        mapKey.current++;
-      }
+      if (data[0]) setCenter([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
     } catch { /* ignore */ }
   }, [locationSearch]);
 
-  // Filter flowers by text search + selected species
   const filtered = useMemo(() => {
     let result = flowers;
     if (search.trim()) {
@@ -202,7 +137,6 @@ export default function Home() {
     return result;
   }, [flowers, search, selectedSpecies]);
 
-  // Unique species list for filter
   const uniqueSpecies = useMemo(() => {
     const map = new Map<string, { name: string; common: string | null; photo: string | null }>();
     flowers.forEach(f => {
@@ -221,35 +155,13 @@ export default function Home() {
     });
   };
 
-  // Fetch species info on click
+  // Simple click — just show what GBIF gave us, no extra fetches
   const handleFlowerClick = useCallback((f: FlowerData) => {
     setSelectedFlower(f);
-    setInfoLoading(true);
-    setSpeciesInfo(null);
-    // Enrich asynchronously — don't block panel from appearing
-    fetch(`/api/species-info?name=${encodeURIComponent(f.species)}`)
-      .then(res => res.ok ? res.json() : null)
-      .then((info: WikiSpeciesInfo | null) => {
-        if (info?.commonName) {
-          setSpeciesInfo(info);
-          setSelectedFlower(prev => prev ? {
-            ...prev,
-            commonName: info.commonName || prev.commonName,
-            wikiUrl: info.wikiUrl || prev.wikiUrl,
-            description: info.description || prev.description,
-            conservationStatus: info.conservationStatus,
-            invasive: info.invasive,
-            toxic: info.toxic,
-          } : prev);
-        }
-        setInfoLoading(false);
-      })
-      .catch(() => setInfoLoading(false));
   }, []);
 
   const handleClose = useCallback(() => {
     setSelectedFlower(null);
-    setSpeciesInfo(null);
   }, []);
 
   return (
@@ -261,7 +173,7 @@ export default function Home() {
           <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
             <h1 className="text-base font-bold text-white whitespace-nowrap mr-1 flex-shrink-0">FloraTime 🌸</h1>
 
-            {/* Location search with autocomplete */}
+            {/* Location search */}
             <div ref={locationInputRef} className="relative flex-shrink-0" style={{ width: "170px" }}>
               <div className="flex gap-1">
                 <input type="text" placeholder="City or place..."
@@ -295,44 +207,12 @@ export default function Home() {
                          placeholder-white/50 border border-white/20 w-[120px]
                          focus:outline-none focus:border-fern" />
 
-            {/* Map layer */}
-            <select value={tileLayer}
-              onChange={e => setTileLayer(e.target.value as "light" | "terrain" | "transit")}
-              className="flex-shrink-0 px-1.5 py-1.5 text-[11px] rounded bg-white/15 text-white
-                         border border-white/20 focus:outline-none cursor-pointer appearance-none text-center"
-              style={{ width: "36px" }}>
-              <option value="light">🗺️</option>
-              <option value="terrain">⛰️</option>
-              <option value="transit">🚇</option>
-            </select>
-
-            {/* Heatmap */}
-            <button onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded border transition
-                ${showHeatmap ? "bg-fern text-white border-fern" : "bg-white/15 text-white border-white/20 hover:bg-white/25"}`}>
-              🔥
-            </button>
-
             {/* Add observation */}
             <button onClick={() => setShowAddForm(true)}
               className="flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded
                          bg-amber-600 text-white hover:bg-amber-700 transition whitespace-nowrap">
               🌱 Add
             </button>
-
-            {/* Flowers / Trees mode toggle */}
-            <div className="flex-shrink-0 flex rounded border border-white/20 overflow-hidden">
-              <button onClick={() => switchMode("flowers")}
-                className={`px-2 py-1.5 text-[11px] font-semibold transition whitespace-nowrap
-                  ${mode === "flowers" ? "bg-fern text-white" : "bg-white/15 text-white hover:bg-white/25"}`}>
-                🌸 Flowers
-              </button>
-              <button onClick={() => switchMode("trees")}
-                className={`px-2 py-1.5 text-[11px] font-semibold transition whitespace-nowrap
-                  ${mode === "trees" ? "bg-amber-800 text-white" : "bg-white/15 text-white hover:bg-white/25"}`}>
-                🌳 Trees
-              </button>
-            </div>
 
             {/* Month filter */}
             <div className="relative flex-shrink-0">
@@ -362,7 +242,6 @@ export default function Home() {
 
         {/* ── Body: Map + Sidebar ── */}
         <div className="flex-1 min-h-0 flex flex-row">
-          {/* Map */}
           <div className="flex-1 relative">
             {error && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30
@@ -373,15 +252,11 @@ export default function Home() {
               </div>
             )}
             <FlowerMap
-              key={mapKey.current}
               flowers={filtered}
               center={center}
               zoom={12}
-              showHeatmap={showHeatmap}
-              tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
               onMoveEnd={handleMapMove}
-              urbanTrees={urbanTrees}
               submissions={submissions}
             />
             {loading && flowers.length === 0 && (
@@ -396,25 +271,6 @@ export default function Home() {
 
           {/* ── Sidebar ── */}
           <div className="w-72 lg:w-80 flex-shrink-0 bg-white border-l border-sage flex flex-col overflow-hidden relative z-20">
-            {/* Area info */}
-            {areaInfo && (
-              <div className="p-3 border-b border-dashed border-gray-200 flex-shrink-0">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">{areaInfo.protected ? "🏞️" : "📍"}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-forest truncate">{areaInfo.name}</p>
-                    <p className="text-[11px] text-gray-500">
-                      {areaInfo.type}{areaInfo.protected ? " · Protected" : ""}
-                    </p>
-                    {areaInfo.protected && (
-                      <p className="text-[10px] text-fern font-semibold mt-0.5">✓ Open to public</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Species filter list */}
             <SpeciesSidebar
               species={uniqueSpecies}
               selectedSpecies={selectedSpecies}
