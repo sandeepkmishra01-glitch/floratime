@@ -103,6 +103,7 @@ interface Props {
   tileLayer?: "light" | "terrain" | "transit";
   onFlowerClick?: (flower: FlowerData) => void;
   onMoveEnd?: (center: [number, number]) => void;
+  mode?: "flowers" | "trees";
   urbanTrees?: UrbanTree[];
   submissions?: UserSubmission[];
 }
@@ -122,10 +123,12 @@ const TILES: Record<string, { url: string; attribution: string; overlay?: { url:
   },
 };
 
-export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, urbanTrees, submissions }: Props) {
+export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = false, tileLayer = "light", onFlowerClick, onMoveEnd, mode = "flowers", urbanTrees, submissions }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<globalThis.Map<string, L.Marker>>(new globalThis.Map());
+  const treeMarkersRef = useRef<L.Marker[]>([]);
+  const subMarkersRef = useRef<L.Marker[]>([]);
   const heatRef = useRef<L.Layer | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
 
@@ -158,13 +161,15 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update markers / heatmap
+  // Update markers / heatmap (flowers mode only)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     markersRef.current.forEach(m => m.remove());
     markersRef.current.clear();
+
+    if (mode !== "flowers") return; // skip flowers in trees mode
 
     if (showHeatmap) {
       const points: [number, number, number][] = flowers
@@ -212,18 +217,22 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
         markersRef.current.set(f.id, marker);
       });
     }
-  }, [flowers, showHeatmap, onFlowerClick]);
+  }, [flowers, showHeatmap, onFlowerClick, mode]);
 
-  // Render urban trees + user submissions (orange/brown markers)
+  // Render urban trees + user submissions (outside flower marker cycle — own cleanup)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    // Cleanup previous tree markers
+    treeMarkersRef.current.forEach(m => m.remove());
+    treeMarkersRef.current = [];
 
     // Urban trees from DC gov data
     if (urbanTrees?.length) {
       urbanTrees.forEach(t => {
         if (!t.lat || !t.lng) return;
-        L.marker([t.lat, t.lng], { icon: getTreeIcon() })
+        const m = L.marker([t.lat, t.lng], { icon: getTreeIcon() })
           .addTo(map)
           .bindPopup(`<div style="min-width:140px;font-family:'Source Sans Pro',sans-serif;">
             <strong>${esc(t.species)}</strong>
@@ -232,10 +241,13 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
             ${t.dbh ? `<br/>DBH: ${t.dbh}"` : ""}
             ${t.ward ? `<br/>${esc(t.ward)}` : ""}
           </div>`, { maxWidth: 200 });
+        treeMarkersRef.current.push(m);
       });
     }
 
     // User submissions (orange)
+    subMarkersRef.current.forEach(m => m.remove());
+    subMarkersRef.current = [];
     if (submissions?.length) {
       const subIcon = new L.DivIcon({
         className: "flower-marker",
@@ -245,7 +257,7 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
       });
 
       submissions.forEach(s => {
-        L.marker([s.lat, s.lng], { icon: subIcon })
+        const m = L.marker([s.lat, s.lng], { icon: subIcon })
           .addTo(map)
           .bindPopup(`<div style="min-width:150px;font-family:'Source Sans Pro',sans-serif;">
             <strong>${esc(s.species)}</strong>
@@ -253,6 +265,7 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
             ${s.notes ? `<br/><span style="font-size:11px;">${esc(s.notes)}</span>` : ""}
             <br/><span style="font-size:10px;color:#999;">Added by community</span>
           </div>`, { maxWidth: 220 });
+        subMarkersRef.current.push(m);
       });
     }
   }, [urbanTrees, submissions]);

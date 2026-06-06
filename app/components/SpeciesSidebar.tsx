@@ -32,7 +32,7 @@ export default function SpeciesSidebar({
   flowers,
 }: Props) {
   return (
-    <>
+    <div className="flex-1 overflow-y-auto">
       <div className="p-2 border-b border-dashed border-gray-200">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-1">
           Species ({species.length})
@@ -87,6 +87,6 @@ export default function SpeciesSidebar({
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }

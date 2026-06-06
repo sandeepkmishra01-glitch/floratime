@@ -66,7 +66,7 @@ export default function Home() {
   const [infoLoading, setInfoLoading] = useState(false);
   const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showUrbanTrees, setShowUrbanTrees] = useState(false);
+  const [mode, setMode] = useState<"flowers" | "trees">("flowers");
   const [urbanTrees, setUrbanTrees] = useState<UrbanTree[]>([]);
   const mapKey = useRef(0);
   const monthBtnRef = useRef<HTMLButtonElement>(null);
@@ -124,14 +124,15 @@ export default function Home() {
     setSubmissions(loadSubmissions());
   }, [center, month, fetchFlowers, fetchAreaInfo]);
 
-  // Fetch urban trees when toggled
-  const toggleUrbanTrees = useCallback(async () => {
-    if (showUrbanTrees) {
-      setShowUrbanTrees(false);
+  // Switch mode: flowers or trees (exclusive)
+  const switchMode = useCallback(async (newMode: "flowers" | "trees") => {
+    if (newMode === mode) return;
+    setMode(newMode);
+    if (newMode === "flowers") {
       setUrbanTrees([]);
       return;
     }
-    setShowUrbanTrees(true);
+    // Trees mode: fetch urban trees for current center
     try {
       const res = await fetch(`/api/urban-trees?lat=${center[0]}&lng=${center[1]}&radius=1000`);
       if (res.ok) {
@@ -139,7 +140,7 @@ export default function Home() {
         setUrbanTrees(data.trees || []);
       }
     } catch { setUrbanTrees([]); }
-  }, [showUrbanTrees, center]);
+  }, [mode, center]);
 
   // Geocode location search with autocomplete
   const handleLocationInput = useCallback((val: string) => {
@@ -320,12 +321,19 @@ export default function Home() {
               🌱 Add
             </button>
 
-            {/* Urban trees */}
-            <button onClick={toggleUrbanTrees}
-              className={`flex-shrink-0 px-2 py-1.5 text-[11px] font-semibold rounded border transition whitespace-nowrap
-                ${showUrbanTrees ? "bg-amber-800 text-white border-amber-800" : "bg-white/15 text-white border-white/20 hover:bg-white/25"}`}>
-              🌳 Trees
-            </button>
+            {/* Flowers / Trees mode toggle */}
+            <div className="flex-shrink-0 flex rounded border border-white/20 overflow-hidden">
+              <button onClick={() => switchMode("flowers")}
+                className={`px-2 py-1.5 text-[11px] font-semibold transition whitespace-nowrap
+                  ${mode === "flowers" ? "bg-fern text-white" : "bg-white/15 text-white hover:bg-white/25"}`}>
+                🌸 Flowers
+              </button>
+              <button onClick={() => switchMode("trees")}
+                className={`px-2 py-1.5 text-[11px] font-semibold transition whitespace-nowrap
+                  ${mode === "trees" ? "bg-amber-800 text-white" : "bg-white/15 text-white hover:bg-white/25"}`}>
+                🌳 Trees
+              </button>
+            </div>
 
             {/* Month filter */}
             <div className="relative flex-shrink-0">
@@ -374,6 +382,7 @@ export default function Home() {
               tileLayer={tileLayer}
               onFlowerClick={handleFlowerClick}
               onMoveEnd={handleMapMove}
+              mode={mode}
               urbanTrees={urbanTrees}
               submissions={submissions}
             />
