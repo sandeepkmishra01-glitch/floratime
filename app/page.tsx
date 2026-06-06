@@ -222,17 +222,16 @@ export default function Home() {
   };
 
   // Fetch species info on click
-  const handleFlowerClick = useCallback(async (f: FlowerData) => {
+  const handleFlowerClick = useCallback((f: FlowerData) => {
     setSelectedFlower(f);
     setInfoLoading(true);
     setSpeciesInfo(null);
-    try {
-      const res = await fetch(`/api/species-info?name=${encodeURIComponent(f.species)}`);
-      if (res.ok) {
-        const info = await res.json();
-        if (info && info.commonName) {
+    // Enrich asynchronously — don't block panel from appearing
+    fetch(`/api/species-info?name=${encodeURIComponent(f.species)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then((info: WikiSpeciesInfo | null) => {
+        if (info?.commonName) {
           setSpeciesInfo(info);
-          // Merge into flower for display
           setSelectedFlower(prev => prev ? {
             ...prev,
             commonName: info.commonName || prev.commonName,
@@ -243,9 +242,9 @@ export default function Home() {
             toxic: info.toxic,
           } : prev);
         }
-      }
-    } catch { /* ignore */ }
-    setInfoLoading(false);
+        setInfoLoading(false);
+      })
+      .catch(() => setInfoLoading(false));
   }, []);
 
   const handleClose = useCallback(() => {
