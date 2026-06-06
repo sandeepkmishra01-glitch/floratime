@@ -24,29 +24,37 @@ function loadHeatmap(): Promise<void> {
 }
 import { FlowerData } from "@/types";
 
-// Fix Leaflet default icon paths
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// Fix Leaflet's default icon paths — must run after Leaflet is loaded
+function fixLeafletIcons() {
+  delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+}
 
-const FLOWER_ICON = new L.DivIcon({
-  className: "flower-marker",
-  html: `<div style="
-    width: 26px; height: 26px;
-    background: linear-gradient(135deg, #5fb021, #468019);
-    border-radius: 50% 50% 0 50%;
-    transform: rotate(-45deg);
-    border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    display: flex; align-items: center; justify-content: center;
-  "><span style="transform: rotate(45deg); font-size: 13px;">🌸</span></div>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-  popupAnchor: [0, -26],
-});
+let FLOWER_ICON: L.DivIcon | null = null;
+function getFlowerIcon(): L.DivIcon {
+  if (!FLOWER_ICON) {
+    FLOWER_ICON = new L.DivIcon({
+      className: "flower-marker",
+      html: `<div style="
+        width: 26px; height: 26px;
+        background: linear-gradient(135deg, #5fb021, #468019);
+        border-radius: 50% 50% 0 50%;
+        transform: rotate(-45deg);
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        display: flex; align-items: center; justify-content: center;
+      "><span style="transform: rotate(45deg); font-size: 13px;">🌸</span></div>`,
+      iconSize: [26, 26],
+      iconAnchor: [13, 26],
+      popupAnchor: [0, -26],
+    });
+  }
+  return FLOWER_ICON;
+}
 
 function esc(s: string | null | undefined): string {
   if (!s) return "";
@@ -81,6 +89,9 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    if (typeof window === "undefined") return; // extra safety
+
+    fixLeafletIcons();
     const map = L.map(containerRef.current).setView(center, zoom);
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
@@ -132,7 +143,7 @@ export default function FlowerMap({ flowers, center, zoom = 12, showHeatmap = fa
           : "";
         const date = fmtDate(f.observedOn);
 
-        const marker = L.marker([f.lat, f.lng], { icon: FLOWER_ICON })
+        const marker = L.marker([f.lat, f.lng], { icon: getFlowerIcon() })
           .addTo(map)
           .bindPopup(
             `<div style="min-width:160px;max-width:240px;font-family:'Source Sans Pro',sans-serif;">

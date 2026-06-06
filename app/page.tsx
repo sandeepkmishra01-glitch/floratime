@@ -3,9 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import FlowerDetails from "./components/FlowerDetails";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { FlowerData } from "@/types";
 
-const FlowerMap = dynamic(() => import("./components/Map"), { ssr: false });
+const FlowerMap = dynamic(() => import("./components/Map"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-cream">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-fern border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-forest text-sm">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 
 const DC_CENTER: [number, number] = [38.9072, -77.0369];
 const MONTHS = [
@@ -73,6 +84,7 @@ export default function Home() {
   const handleClose = useCallback(() => setSelectedFlower(null), []);
 
   return (
+    <ErrorBoundary>
     <div className="h-screen w-screen flex flex-col bg-cream">
       {/* ── Header ── */}
       <header
@@ -238,5 +250,6 @@ export default function Home() {
         <FlowerDetails flower={selectedFlower} onClose={handleClose} />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
