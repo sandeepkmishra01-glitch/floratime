@@ -3,6 +3,7 @@ import {
   FlowerSearchParams,
   GBIFOccurrence,
   GBIFResponse,
+  PhotoItem,
 } from "@/types";
 
 const GBIF_API = "https://api.gbif.org/v1";
@@ -96,21 +97,36 @@ export async function fetchFlowersWithCoords(
 }
 
 function mapOccurrence(occ: GBIFOccurrence): FlowerData {
-  const media = occ.media?.[0];
+  const allPhotos: PhotoItem[] = (occ.media || [])
+    .filter(m => m.type === "StillImage")
+    .map(m => ({
+      url: m.identifier,
+      attribution: safeAttribution(m.references) || m.publisher || null,
+    }));
+
+  const primaryPhoto = allPhotos[0];
 
   return {
     id: `gbif-${occ.key}`,
     lat: occ.decimalLatitude,
     lng: occ.decimalLongitude,
     species: occ.species || occ.scientificName || "Unknown species",
-    commonName: null, // Filled by Wikidata enrichment
+    commonName: null,
     observedOn: occ.eventDate || null,
-    photoUrl: media?.identifier || null,
-    photoAttribution: safeAttribution(media?.references),
-    wikiUrl: null, // Filled by Wikidata enrichment
+    photoUrl: primaryPhoto?.url || null,
+    photos: allPhotos,
+    photoAttribution: primaryPhoto?.attribution || null,
+    wikiUrl: null,
     description: null,
     observerName: null,
+    identifiedBy: occ.identifiedBy || null,
     placeGuess: occ.locality || null,
-    sourceUrl: `https://www.gbif.org/occurrence/${occ.key}`,
+    sourceUrl: occ.references || `https://www.gbif.org/occurrence/${occ.key}`,
+    datasetName: occ.datasetName || null,
+    taxonRank: occ.taxonRank || null,
+    recordedBy: occ.recordedBy || null,
+    individualCount: occ.individualCount || null,
+    lifeStage: occ.lifeStage || null,
+    reproductiveCondition: occ.reproductiveCondition || null,
   };
 }

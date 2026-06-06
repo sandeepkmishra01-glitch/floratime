@@ -145,15 +145,87 @@ export default function FlowerDetails({ flower, onClose }: Props) {
                 <span className="text-forest font-medium">{flower.placeGuess}</span>
               </div>
             )}
-            {flower.observerName && (
+            {flower.recordedBy && (
               <div>
                 <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
-                  Observer
+                  Recorded by
                 </span>
-                <span className="text-forest font-medium">{flower.observerName}</span>
+                <span className="text-forest font-medium">{flower.recordedBy}</span>
+              </div>
+            )}
+            {flower.identifiedBy && (
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Identified by
+                </span>
+                <span className="text-forest font-medium">{flower.identifiedBy}</span>
+              </div>
+            )}
+            {flower.taxonRank && (
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Rank
+                </span>
+                <span className="text-forest font-medium capitalize">{flower.taxonRank}</span>
+              </div>
+            )}
+            {flower.datasetName && (
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Source
+                </span>
+                <span className="text-forest font-medium text-xs">{flower.datasetName}</span>
+              </div>
+            )}
+            {flower.individualCount != null && (
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Count
+                </span>
+                <span className="text-forest font-medium">{flower.individualCount}</span>
+              </div>
+            )}
+            {flower.lifeStage && (
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Life stage
+                </span>
+                <span className="text-forest font-medium capitalize">{flower.lifeStage}</span>
+              </div>
+            )}
+            {flower.reproductiveCondition && (
+              <div className="col-span-2">
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold">
+                  Condition
+                </span>
+                <span className="text-forest font-medium">{flower.reproductiveCondition}</span>
               </div>
             )}
           </div>
+
+          {/* All photos gallery */}
+          {flower.photos && flower.photos.length > 1 && (
+            <>
+              <div className="border-t border-dashed border-gray-300" />
+              <div>
+                <span className="text-gray-400 block text-[11px] uppercase tracking-wide font-semibold mb-2">
+                  All Photos ({flower.photos.length})
+                </span>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {flower.photos.map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
+                      className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-sage
+                                 hover:border-fern transition">
+                      <img src={p.url} alt={`Photo ${i + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Description */}
           {flower.description && (

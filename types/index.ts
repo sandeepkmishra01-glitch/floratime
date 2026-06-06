@@ -1,4 +1,9 @@
 // Shared flower data model (API-agnostic)
+export interface PhotoItem {
+  url: string;
+  attribution: string | null;
+}
+
 export interface FlowerData {
   id: string;
   lat: number;
@@ -6,13 +11,21 @@ export interface FlowerData {
   species: string;
   commonName: string | null;
   observedOn: string | null;
-  photoUrl: string | null;
+  photoUrl: string | null;            // primary photo
+  photos: PhotoItem[];                 // all photos
   photoAttribution: string | null;
   wikiUrl: string | null;
   description: string | null;
   observerName: string | null;
+  identifiedBy: string | null;
   placeGuess: string | null;
   sourceUrl: string;
+  datasetName: string | null;
+  taxonRank: string | null;
+  recordedBy: string | null;
+  individualCount: number | null;
+  lifeStage: string | null;
+  reproductiveCondition: string | null;
   conservationStatus?: string | null;
   invasive?: boolean | null;
   toxic?: string | null;
@@ -31,6 +44,7 @@ export interface GBIFOccurrence {
   key: number;
   species: string;
   scientificName: string;
+  taxonRank: string;
   decimalLatitude: number;
   decimalLongitude: number;
   eventDate: string | null;
@@ -41,12 +55,21 @@ export interface GBIFOccurrence {
   basisOfRecord: string;
   occurrenceStatus: string;
   iucnRedListCategory: string | null;
+  recordedBy: string | null;
+  identifiedBy: string | null;
+  datasetName: string | null;
+  individualCount: number | null;
+  lifeStage: string | null;
+  reproductiveCondition: string | null;
+  references: string | null;
 }
 
 export interface GBIFMedia {
   type: "StillImage" | "Sound" | "MovingImage";
   identifier: string;
   references: string;
+  publisher?: string;
+  license?: string;
 }
 
 export interface GBIFResponse {
